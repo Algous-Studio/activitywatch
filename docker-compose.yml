@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aw_user
+      POSTGRES_PASSWORD: aw_pass
+      POSTGRES_DB: aw_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aw_user -d aw_db -h 127.0.0.1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  aw-server:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # DSN для твоего PostgresqlStorage (берется в __init__)
+      POSTGRES_DSN: "host=db port=5432 dbname=aw_db user=aw_user password=aw_pass"
+      # на всякий случай можно ослабить/настроить CORS, если нужно
+      # AW_CORS_ORIGINS: "http://localhost:27180/*"
+      GUNICORN_WORKERS: "4"
+      GUNICORN_TIMEOUT: "36000"
+      # чтобы device_id и кастомный статики писались и сохранялись
+      XDG_DATA_HOME: "/var/lib/aw"
+    volumes:
+      - aw-data:/var/lib/aw
+    ports:
+      - "5600:5600"
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  aw-data:
