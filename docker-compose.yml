@@ -20,18 +20,30 @@ services:
       db:
         condition: service_healthy
     environment:
-      # DSN для твоего PostgresqlStorage (берется в __init__)
+      AW_STORAGE: "postgresql"   # твой PostgresqlStorage выберется в wsgi по этой переменной
       POSTGRES_DSN: "host=db port=5432 dbname=aw_db user=aw_user password=aw_pass"
-      # на всякий случай можно ослабить/настроить CORS, если нужно
-      # AW_CORS_ORIGINS: "http://localhost:27180/*"
-      GUNICORN_WORKERS: "4"
-      GUNICORN_TIMEOUT: "36000"
-      # чтобы device_id и кастомный статики писались и сохранялись
+      PGPOOL_MIN: "1"
+      PGPOOL_MAX: "20"
+      PGCLIENT_APPNAME: "aw-server"
+      AW_CORS_ORIGINS: "http://localhost:27180/*"
       XDG_DATA_HOME: "/var/lib/aw"
+      AW_HOST: "0.0.0.0"
+      # Gunicorn
+      GUNICORN_WORKERS: "4"
+      GUNICORN_THREADS: "8"              # под CPU (ориентир: 2*ядра)
+      GUNICORN_TIMEOUT: "120"
+      GUNICORN_WORKER_CLASS: "sync"      # при необходимости: "gevent"
+      GUNICORN_MAX_REQUESTS: "1000"
+      GUNICORN_MAX_REQUESTS_JITTER: "100"
     volumes:
       - aw-data:/var/lib/aw
     ports:
       - "5600:5600"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5600/api/0/info"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
 volumes:
