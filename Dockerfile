@@ -40,7 +40,7 @@ WORKDIR /app
 
 # базовые питон-зависимости
 RUN python -m pip install -U pip wheel \
- && pip install --no-cache-dir gunicorn psycopg2-binary
+ && pip install --no-cache-dir gunicorn psycopg2-binary gevent psycogreen
 # если нужна асинхронщина — раскомментируй:
 # RUN pip install --no-cache-dir gevent
 
@@ -75,13 +75,15 @@ WORKDIR /app/aw-server
 
 # предполагается фабрика create_app() в aw-server/wsgi.py.
 # Если у тебя экспортируется готовый app — замени на "wsgi:app"
-CMD ["bash","-lc","exec gunicorn 'wsgi:create_app()' \
+CMD ["bash","-lc","exec gunicorn 'wsgi_gevent:app' \
     --bind 0.0.0.0:5600 \
     --workers ${GUNICORN_WORKERS} \
-    --threads ${GUNICORN_THREADS} \
-    --timeout ${GUNICORN_TIMEOUT} \
     --worker-class ${GUNICORN_WORKER_CLASS} \
+    --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} \
+    --timeout ${GUNICORN_TIMEOUT} \
     --max-requests ${GUNICORN_MAX_REQUESTS} \
     --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER} \
+    --keep-alive 5 \
+    --backlog 2048 \
     --preload \
     --access-logfile -"]
